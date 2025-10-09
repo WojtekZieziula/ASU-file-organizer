@@ -1,0 +1,4 @@
+attributes=644
+problematic_chars= ;"*?$#|\\<>[](){}!%&'`:
+replacement_char=_
+temp_extensions=.tmp,~,.temp,.bak,.swp,.swo
