@@ -111,6 +111,45 @@ def process_junk(files):
                     print(f"-> Error: {e}")
 
 
+def process_duplicates(files):
+    print("\n--- Handling Content Duplicates ---")
+    groups = {}
+    for file in files:
+        if file['hash'] and file['size'] > 0:
+            groups.setdefault(file['hash'], []).append(file)
+
+    action_all = None
+
+    for hash, group in groups.items():
+        if len(group) > 1:
+            group.sort(key=lambda x: x['mtime'])
+            original = group[0]
+            copies = group[1:]
+
+            print(f"\nOriginal (oldest): {original['path']}")
+            print(f"Duplicates ({len(copies)}):")
+            for c in copies:
+                print(f" - {c['path']}")
+
+            if action_all:
+                decision = action_all
+            else:
+                decision = ask_user("Delete duplicates?")
+
+            if decision == 'a':
+                action_all = 'a'
+                decision = 'y'
+
+            if decision == 'y':
+                for copy in copies:
+                    try:
+                        os.remove(copy['path'])
+                        if copy in files: files.remove(copy)
+                        print(f"-> Deleted: {copy['path']}")
+                    except OSError:
+                        print(f"-> Error deleting {c['path']}")
+
+
 def process_names(files):
     print("\n--- Fixing Filenames ---")
     bad_chars = CONFIG['bad_chars']
@@ -164,6 +203,8 @@ if __name__ == "__main__":
 
     parser.add_argument("-j", "--junk", action="store_true")
     parser.add_argument("-n", "--names", action="store_true")
+    parser.add_argument("-d", "--duplicates", action="store_true")
+
 
     args = parser.parse_args()
 
@@ -183,6 +224,9 @@ if __name__ == "__main__":
 
     if args.junk:
         process_junk(all_files)
+
+    if  args.duplicates:
+        process_duplicates(all_files)
 
     if args.names:
         process_names(all_files)
