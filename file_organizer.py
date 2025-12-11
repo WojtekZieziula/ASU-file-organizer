@@ -2,6 +2,7 @@ import os
 import sys
 import configparser
 import stat
+import hashlib
 
 
 def load_config():
@@ -41,6 +42,21 @@ def get_file_info(filepath):
     except OSError:
         return None
 
+def calculate_hash(filepath):
+    sha256 = hashlib.sha256()
+    try:
+        with open(filepath, 'rb') as f:
+            while True:
+                data = f.read(65536)
+                if not data:
+                    break
+                sha256.update(data)
+        return sha256.hexdigest()
+    except (OSError, IOError):
+        return None
+
+
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -51,3 +67,4 @@ if __name__ == "__main__":
     other_dirs = sys.argv[1:]
 
     print(get_file_info(target_dir))
+    print(calculate_hash(target_dir))
