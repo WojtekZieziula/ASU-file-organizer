@@ -1,4 +1,5 @@
-attributes=644
-problematic_chars= ;"*?$#|\\<>[](){}!%&'`:
-replacement_char=_
-temp_extensions=.tmp,~,.temp,.bak,.swp,.swo
+[DEFAULT]
+permissions = 644
+bad_chars = :;"'*?$\#|
+bad_char_sub = _
+temp_extensions = .tmp,.bak,.swp,~
