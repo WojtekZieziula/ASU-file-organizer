@@ -25,3 +25,15 @@ for current_dir in "${ALL_DIRS[@]}"; do
     done
 done
 
+
+echo "--- Generating files with invalid characters ---"
+
+COUNTER=1
+for current_dir in "${ALL_DIRS[@]}"; do
+
+    touch "$current_dir/report:$COUNTER?#\$File.pdf"
+
+    touch "$current_dir/name*'with\"quotes'.log"
+
+    COUNTER=$((COUNTER + 1))
+done
