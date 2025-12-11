@@ -190,6 +190,27 @@ def process_names(files):
                     print(f"-> Error: {e}")
 
 
+def process_perms(files):
+    print("\n--- Fixing Permissions ---")
+    target_mode = int(CONFIG['permissions'], 8)
+    action_all = None
+
+    for file in files:
+        if file['mode'] != target_mode:
+            print(f"File found: {file['path']}")
+            print(f"File {file['name']} permissions: {oct(file['mode'])[-3:]}. Target: {CONFIG['permissions']}")
+            decision = action_all if action_all else ask_user("Fix?")
+            if decision == 'a': action_all = 'a'; decision = 'y'
+
+            if decision == 'y':
+                try:
+                    os.chmod(file['path'], target_mode)
+                    file['mode'] = target_mode
+                    print("-> Fixed.")
+                except OSError as e:
+                    print(f"-> Error: {e}")
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python file_organizer.py <directory_X> [directory_Y1] ...")
@@ -204,7 +225,7 @@ if __name__ == "__main__":
     parser.add_argument("-j", "--junk", action="store_true")
     parser.add_argument("-n", "--names", action="store_true")
     parser.add_argument("-d", "--duplicates", action="store_true")
-
+    parser.add_argument("-p", "--perms", action="store_true")
 
     args = parser.parse_args()
 
@@ -230,3 +251,7 @@ if __name__ == "__main__":
 
     if args.names:
         process_names(all_files)
+
+
+    if args.perms:
+        process_perms(all_files)

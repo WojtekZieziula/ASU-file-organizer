@@ -51,3 +51,15 @@ for current_dir in "${ALL_DIRS[@]}"; do
 
     COUNTER=$((COUNTER + 1))
 done
+
+
+echo "--- Generating files with unusual permissions ---"
+
+touch "$MAIN_X/unusual_perms.sh"
+chmod 777 "$MAIN_X/unusual_perms.sh"
+
+touch "$DIR_Y1/unusual_perms2.sh"
+chmod 420 "$DIR_Y1/unusual_perms2.sh"
+
+touch "$DIR_Y2/unusual_perms3.sh"
+chmod 111 "$DIR_Y2/unusual_perms3.sh"
