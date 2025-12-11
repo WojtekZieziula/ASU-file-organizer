@@ -56,6 +56,18 @@ def calculate_hash(filepath):
         return None
 
 
+def scan_directories(directories):
+    files = []
+    print("Scanning directories...")
+    for directory in directories:
+        for root, _, filenames in os.walk(directory):
+            for name in filenames:
+                path = os.path.join(root, name)
+                info = get_file_info(path)
+                if info:
+                    info['hash'] = calculate_hash(path)
+                    files.append(info)
+    return files
 
 
 if __name__ == "__main__":
@@ -66,5 +78,5 @@ if __name__ == "__main__":
     target_dir = sys.argv[1]
     other_dirs = sys.argv[1:]
 
-    print(get_file_info(target_dir))
-    print(calculate_hash(target_dir))
+    print(scan_directories(other_dirs))
+
