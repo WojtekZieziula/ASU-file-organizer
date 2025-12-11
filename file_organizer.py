@@ -5,6 +5,8 @@ import stat
 import hashlib
 import argparse
 import re
+import shutil
+import time
 
 
 def load_config():
@@ -99,7 +101,7 @@ def process_junk(files):
                 decision = ask_user("Delete?")
 
             if decision == 'a':
-                action_all = 'a';
+                action_all = 'a'
                 decision = 'y'
 
             if decision == 'y':
@@ -211,25 +213,85 @@ def process_perms(files):
                     print(f"-> Error: {e}")
 
 
+def consolidate_files(files, main_dir):
+    print(f"\n--- Consolidating to {main_dir} ---")
+    main_dir_abs = os.path.abspath(main_dir)
+    action_all = None
+
+    for file in files:
+        abs_path = os.path.abspath(file['path'])
+
+        # if file is not inside main directory
+        if not abs_path.startswith(main_dir_abs):
+            dest = os.path.join(main_dir_abs, file['name'])
+
+            if os.path.exists(dest):
+                dest_stat = os.stat(dest)
+                existing_mtime = dest_stat.st_mtime
+                incoming_mtime = file['mtime']
+
+                print(f"\nConflict found: File '{file['name']}' exists in both source ({file['path']}) and destination ({dest}).")
+
+                if incoming_mtime > existing_mtime:
+                    print(f"-> Incoming file (Y) is NEWER ({time.ctime(incoming_mtime)}).")
+                    suggestion = "MOVE and REPLACE (Keep Newer)"
+                    action_on_y = 'y'
+                else:
+                    print(f"-> Existing file (X) is NEWER or SAME DATE ({time.ctime(existing_mtime)}).")
+                    suggestion = "SKIP (Keep Newer/Existing)"
+                    action_on_y = 'n'
+
+                print(f"Suggestion: {suggestion}")
+
+                decision = action_all if action_all else ask_user("Execute suggestion? (y/n/a)")
+                if decision == 'a': action_all = 'a'; decision = 'y'
+
+                if decision == 'y':
+                    if action_on_y == 'y':
+                        try:
+                            shutil.move(file['path'], dest)
+                            file['path'] = dest
+                            print("-> Moved and replaced older version.")
+                        except OSError as e:
+                            print(f"-> Error moving file: {e}")
+                    else:
+                        try:
+                            os.remove(f['path'])
+                            print("-> Kept existing file in X. Deleted older file from source.")
+                        except OSError as e:
+                            print(f"-> Error deleting source file: {e}")
+
+                continue
+
+            print(f"File outside main directory: {file['path']}")
+            decision = action_all if action_all else ask_user("Move to X?")
+            if decision == 'a': action_all = 'a'; decision = 'y'
+
+            if decision == 'y':
+                try:
+                    shutil.move(file['path'], dest)
+                    file['path'] = dest
+                    print("-> Moved.")
+                except OSError as e:
+                    print(f"-> Error: {e}")
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python file_organizer.py <directory_X> [directory_Y1] ...")
-        sys.exit(1)
-
-
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("main_directory")
+    parser.add_argument("main_directories")
     parser.add_argument("extra_directories", nargs='*')
 
     parser.add_argument("-j", "--junk", action="store_true")
-    parser.add_argument("-n", "--names", action="store_true")
     parser.add_argument("-d", "--duplicates", action="store_true")
-    parser.add_argument("-p", "--perms", action="store_true")
+    parser.add_argument("-n", "--names", action="store_true")
+    parser.add_argument("-p", "--permissions", action="store_true")
+    parser.add_argument("-m", "--move", action="store_true")
+    parser.add_argument("-a", "--all", action="store_true")
 
     args = parser.parse_args()
 
-    directories_to_scan = [args.main_directory] + args.extra_directories
+    directories_to_scan = [args.main_directories] + args.extra_directories
 
     try:
         all_files = scan_directories(directories_to_scan)
@@ -243,15 +305,22 @@ if __name__ == "__main__":
         print("No files found.")
         sys.exit(0)
 
-    if args.junk:
+
+    if args.all or args.junk:
         process_junk(all_files)
 
-    if  args.duplicates:
+    if args.all or args.dupes:
         process_duplicates(all_files)
 
-    if args.names:
+    if args.all or args.names:
         process_names(all_files)
 
-
-    if args.perms:
+    if args.all or args.perms:
         process_perms(all_files)
+
+    if args.all or args.move:
+        consolidate_files(all_files, args.main_dir)
+
+    if not (args.all or args.junk or args.dupes or args.names or args.perms or args.move):
+        print("\nNo action selected.")
+
