@@ -4,6 +4,7 @@ import configparser
 import stat
 import hashlib
 import argparse
+import re
 
 
 def load_config():
@@ -47,9 +48,9 @@ def get_file_info(filepath):
 def calculate_hash(filepath):
     sha256 = hashlib.sha256()
     try:
-        with open(filepath, 'rb') as f:
+        with open(filepath, 'rb') as file:
             while True:
-                data = f.read(65536)
+                data = file.read(65536)
                 if not data:
                     break
                 sha256.update(data)
@@ -81,25 +82,71 @@ def ask_user(prompt):
 
 
 def process_junk(files):
-    print("\n--- [MODE: JUNK] Removing Empty and Temporary Files ---")
+    print("\n--- Removing Empty and Temporary Files ---")
     temp_exts = CONFIG['temp_extensions'].split(',')
     action_all = None
 
-    for f in files[:]:
+    for file in files[:]:
         reason = ""
-        if f['size'] == 0: reason = "Empty file"
-        elif any(f['name'].endswith(ext) for ext in temp_exts): reason = "Temporary file"
+        if file['size'] == 0: reason = "Empty file"
+        elif any(file['name'].endswith(ext) for ext in temp_exts): reason = "Temporary file"
 
         if reason:
-            print(f"Found: {f['path']} ({reason})")
-            decision = action_all if action_all else ask_user("Delete?")
-            if decision == 'a': action_all = 'a'; decision = 'y'
+            print(f"Found: {file['path']} ({reason})")
+            if action_all:
+                decision = action_all
+            else:
+                decision = ask_user("Delete?")
+
+            if decision == 'a':
+                action_all = 'a';
+                decision = 'y'
 
             if decision == 'y':
                 try:
-                    os.remove(f['path'])
-                    files.remove(f)
+                    os.remove(file['path'])
+                    files.remove(file)
                     print("-> Deleted.")
+                except OSError as e:
+                    print(f"-> Error: {e}")
+
+
+def process_names(files):
+    print("\n--- Fixing Filenames ---")
+    bad_chars = CONFIG['bad_chars']
+    sub = CONFIG['bad_char_sub']
+    action_all = None
+
+    pattern = '[]' + re.escape(bad_chars) + ']+'
+    pattern_cleanup = '^' + re.escape(sub) + '+|' + re.escape(sub) + '+$'
+
+    for file in files:
+        original_name = file['name']
+        new_name = re.sub(pattern, sub, original_name)
+        name_part, ext_part = os.path.splitext(new_name)
+        cleaned_name_part = re.sub(pattern_cleanup, '', name_part)
+        final_new_name = cleaned_name_part + ext_part
+
+        if final_new_name != original_name:
+            print(f"File found: {file['path']}")
+            print(f"Rename: {original_name} -> {final_new_name}")
+
+            if action_all:
+                decision = action_all
+            else:
+                decision = ask_user("Rename?")
+
+            if decision == 'a':
+                action_all = 'a'
+                decision = 'y'
+
+            if decision == 'y':
+                new_path = os.path.join(os.path.dirname(file['path']), final_new_name)
+                try:
+                    os.rename(file['path'], new_path)
+                    file['path'] = new_path
+                    file['name'] = final_new_name
+                    print("-> Renamed")
                 except OSError as e:
                     print(f"-> Error: {e}")
 
@@ -116,6 +163,7 @@ if __name__ == "__main__":
     parser.add_argument("extra_directories", nargs='*')
 
     parser.add_argument("-j", "--junk", action="store_true")
+    parser.add_argument("-n", "--names", action="store_true")
 
     args = parser.parse_args()
 
@@ -135,3 +183,6 @@ if __name__ == "__main__":
 
     if args.junk:
         process_junk(all_files)
+
+    if args.names:
+        process_names(all_files)
