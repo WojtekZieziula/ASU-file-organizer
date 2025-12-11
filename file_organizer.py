@@ -214,14 +214,13 @@ def process_perms(files):
 
 
 def consolidate_files(files, main_dir):
-    print(f"\n--- Consolidating to {main_dir} ---")
+    print(f"\n--- [MODE: MOVE] Consolidating to {main_dir} ---")
     main_dir_abs = os.path.abspath(main_dir)
     action_all = None
 
     for file in files:
         abs_path = os.path.abspath(file['path'])
 
-        # if file is not inside main directory
         if not abs_path.startswith(main_dir_abs):
             dest = os.path.join(main_dir_abs, file['name'])
 
@@ -230,50 +229,45 @@ def consolidate_files(files, main_dir):
                 existing_mtime = dest_stat.st_mtime
                 incoming_mtime = file['mtime']
 
-                print(f"\nConflict found: File '{file['name']}' exists in both source ({file['path']}) and destination ({dest}).")
+                print(f"\nConflict found: File '{file['name']}' in {file['path']} vs {dest}.")
 
                 if incoming_mtime > existing_mtime:
-                    print(f"-> Incoming file (Y) is NEWER ({time.ctime(incoming_mtime)}).")
                     suggestion = "MOVE and REPLACE (Keep Newer)"
-                    action_on_y = 'y'
+                    final_action = 'replace'
                 else:
-                    print(f"-> Existing file (X) is NEWER or SAME DATE ({time.ctime(existing_mtime)}).")
                     suggestion = "SKIP (Keep Newer/Existing)"
-                    action_on_y = 'n'
+                    final_action = 'skip_source'
 
                 print(f"Suggestion: {suggestion}")
 
-                decision = action_all if action_all else ask_user("Execute suggestion? (y/n/a)")
-                if decision == 'a': action_all = 'a'; decision = 'y'
+                decision_conflict = action_all if action_all == 'y' else ask_user("Execute suggestion?")
 
-                if decision == 'y':
-                    if action_on_y == 'y':
+                if decision_conflict == 'a':
+                    action_all = 'y'
+                    decision_conflict = 'y'
+
+                if decision_conflict == 'y':
+                    if final_action == 'replace':
                         try:
                             shutil.move(file['path'], dest)
-                            file['path'] = dest
                             print("-> Moved and replaced older version.")
                         except OSError as e:
                             print(f"-> Error moving file: {e}")
                     else:
                         try:
-                            os.remove(f['path'])
+                            os.remove(file['path'])
                             print("-> Kept existing file in X. Deleted older file from source.")
                         except OSError as e:
                             print(f"-> Error deleting source file: {e}")
 
                 continue
 
-            print(f"File outside main directory: {file['path']}")
-            decision = action_all if action_all else ask_user("Move to X?")
-            if decision == 'a': action_all = 'a'; decision = 'y'
-
-            if decision == 'y':
-                try:
-                    shutil.move(file['path'], dest)
-                    file['path'] = dest
-                    print("-> Moved.")
-                except OSError as e:
-                    print(f"-> Error: {e}")
+            try:
+                shutil.move(file['path'], dest)
+                file['path'] = dest
+                print(f"-> Moved standard file: {file['name']}")
+            except OSError as e:
+                print(f"-> Error moving file: {e}")
 
 
 if __name__ == "__main__":
@@ -309,18 +303,18 @@ if __name__ == "__main__":
     if args.all or args.junk:
         process_junk(all_files)
 
-    if args.all or args.dupes:
+    if args.all or args.duplicates:
         process_duplicates(all_files)
 
     if args.all or args.names:
         process_names(all_files)
 
-    if args.all or args.perms:
+    if args.all or args.permissions:
         process_perms(all_files)
 
     if args.all or args.move:
-        consolidate_files(all_files, args.main_dir)
+        consolidate_files(all_files, args.main_directories)
 
-    if not (args.all or args.junk or args.dupes or args.names or args.perms or args.move):
+    if not (args.all or args.junk or args.duplicates or args.names or args.permissions or args.move):
         print("\nNo action selected.")
 
