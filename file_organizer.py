@@ -269,21 +269,31 @@ def consolidate_files(files, main_dir):
             except OSError as e:
                 print(f"-> Error moving file: {e}")
 
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="File Organizer: Advanced data consolidation and file system maintenance tool.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
 
-    parser.add_argument("main_directory")
-    parser.add_argument("extra_directories", nargs='*')
+    parser.add_argument("main_directory",
+                        help="Primary destination directory for consolidated files.")
+    parser.add_argument("extra_directories", nargs='*',
+                        help="Source directories for analysis and cleaning.")
 
-    parser.add_argument("-j", "--junk", action="store_true")
-    parser.add_argument("-d", "--duplicates", action="store_true")
-    parser.add_argument("-c", "--name-conflicts", action="store_true")
-    parser.add_argument("-n", "--names", action="store_true")
-    parser.add_argument("-p", "--permissions", action="store_true")
-    parser.add_argument("-m", "--move", action="store_true")
-    parser.add_argument("-a", "--all", action="store_true")
-
+    parser.add_argument("-j", "--junk", action="store_true",
+                        help="Eliminate empty files and pre-defined temporary extensions.")
+    parser.add_argument("-d", "--duplicates", action="store_true",
+                        help="Perform content-based duplicate analysis using SHA-256 hashing.")
+    parser.add_argument("-c", "--name-conflicts", action="store_true",
+                        help="Resolve filename collisions by comparing modification timestamps.")
+    parser.add_argument("-n", "--names", action="store_true",
+                        help="Sanitize filenames according to Regular Expression patterns.")
+    parser.add_argument("-p", "--permissions", action="store_true",
+                        help="Standardize file access modes to ensure filesystem integrity.")
+    parser.add_argument("-m", "--move", action="store_true",
+                        help="Consolidate validated resources into the main directory.")
+    parser.add_argument("-a", "--all", action="store_true",
+                        help="Execute all maintenance and consolidation modules sequentially.")
     args = parser.parse_args()
 
     directories_to_scan = [args.main_directory] + args.extra_directories
@@ -299,7 +309,6 @@ if __name__ == "__main__":
     if not all_files:
         print("No files found.")
         sys.exit(0)
-
 
     if args.all or args.junk:
         process_junk(all_files)
