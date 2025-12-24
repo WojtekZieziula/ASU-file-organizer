@@ -198,13 +198,28 @@ def process_names(files):
         original_name = file['name']
 
         intermediate_name = re.sub(pattern_problem_chars, sub, original_name)
-
         name_part, ext_part = os.path.splitext(intermediate_name)
         cleaned_name_part = re.sub(pattern_cleanup_edges, '', name_part)
+
+        if not cleaned_name_part:
+            cleaned_name_part = "unnamed_file"
+
         final_new_name = cleaned_name_part + ext_part
 
         if final_new_name != original_name:
             print(f"File found: {file['path']}")
+
+            base_dir = os.path.dirname(file['path'])
+            new_path = os.path.join(base_dir, final_new_name)
+
+            if os.path.exists(new_path):
+                counter = 1
+                while os.path.exists(new_path):
+                    new_path = os.path.join(base_dir, f"{cleaned_name_part}_{counter}{ext_part}")
+                    counter += 1
+                final_new_name = os.path.basename(new_path)
+                print(f"-> Collision detected! New target: {final_new_name}")
+
             print(f"Rename: {original_name} -> {final_new_name}")
 
             if action_all:
@@ -217,7 +232,6 @@ def process_names(files):
                 decision = 'y'
 
             if decision == 'y':
-                new_path = os.path.join(os.path.dirname(file['path']), final_new_name)
                 try:
                     os.rename(file['path'], new_path)
                     file['path'] = new_path
